@@ -1,11 +1,13 @@
 package postgres
 
 import (
-	"github.com/DroiTaipei/droictx"
 	"time"
+
+	"github.com/DroiTaipei/droictx"
+	"github.com/DroiTaipei/droipkg"
 )
 
-func getPg(ctx droictx.Context) (ret *Pg, err error) {
+func getPg(ctx droictx.Context) (ret *Pg, droiError droipkg.DroiError) {
 	if pgMode == ONE_NODE_MODE {
 		if oneP.Workable() {
 			oneP.setCtx(ctx)
@@ -15,14 +17,15 @@ func getPg(ctx droictx.Context) (ret *Pg, err error) {
 		}
 
 	}
-	ret, err = rP.RREndPoint()
+	ret, err := rP.RREndPoint()
 	if err != nil {
 		ret.setCtx(ctx)
+		checkDatabaseError(err, &droiError)
 	}
 	return
 }
 
-func OneRecord(ctx droictx.Context, whereClause string, ret interface{}) (err error) {
+func OneRecord(ctx droictx.Context, whereClause string, ret interface{}) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
@@ -32,7 +35,7 @@ func OneRecord(ctx droictx.Context, whereClause string, ret interface{}) (err er
 	return
 }
 
-func Query(ctx droictx.Context, where, order string, limit, offset int, ret interface{}) (err error) {
+func Query(ctx droictx.Context, where, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
 
 	p, err := getPg(ctx)
 	if err != nil {
@@ -52,7 +55,7 @@ func Query(ctx droictx.Context, where, order string, limit, offset int, ret inte
 	return
 }
 
-func TableQuery(ctx droictx.Context, table, where, order string, limit, offset int, ret interface{}) (err error) {
+func TableQuery(ctx droictx.Context, table, where, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
 
 	p, err := getPg(ctx)
 	if err != nil {
@@ -72,7 +75,7 @@ func TableQuery(ctx droictx.Context, table, where, order string, limit, offset i
 	return
 }
 
-func SQLQuery(ctx droictx.Context, querySql string, ret interface{}) (err error) {
+func SQLQuery(ctx droictx.Context, querySql string, ret interface{}) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
@@ -84,7 +87,7 @@ func SQLQuery(ctx droictx.Context, querySql string, ret interface{}) (err error)
 	return
 }
 
-func Count(ctx droictx.Context, where string, model interface{}, ret *int) (err error) {
+func Count(ctx droictx.Context, where string, model interface{}, ret *int) (err droipkg.DroiError) {
 
 	p, err := getPg(ctx)
 	if err != nil {
@@ -100,7 +103,7 @@ func Count(ctx droictx.Context, where string, model interface{}, ret *int) (err 
 	return
 }
 
-func Insert(ctx droictx.Context, ret interface{}) (err error) {
+func Insert(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
@@ -109,7 +112,7 @@ func Insert(ctx droictx.Context, ret interface{}) (err error) {
 	return
 }
 
-func OmitInsert(ctx droictx.Context, ret interface{}, omit string) (err error) {
+func OmitInsert(ctx droictx.Context, ret interface{}, omit string) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
@@ -118,7 +121,7 @@ func OmitInsert(ctx droictx.Context, ret interface{}, omit string) (err error) {
 	return
 }
 
-func Update(ctx droictx.Context, ret interface{}, fields map[string]interface{}) (err error) {
+func Update(ctx droictx.Context, ret interface{}, fields map[string]interface{}) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
@@ -128,7 +131,7 @@ func Update(ctx droictx.Context, ret interface{}, fields map[string]interface{})
 	return
 }
 
-func Delete(ctx droictx.Context, ret interface{}) (err error) {
+func Delete(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
@@ -137,12 +140,12 @@ func Delete(ctx droictx.Context, ret interface{}) (err error) {
 	return
 }
 
-func Join(ctx droictx.Context, table, fields, join, where, order string, ret interface{}) (err error) {
+func Join(ctx droictx.Context, table, fields, join, where, order string, ret interface{}) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
 	}
-	err = p.Conn.
+	pgErr := p.Conn.
 		Table(table).
 		Select(fields).
 		Joins(join).
@@ -150,11 +153,11 @@ func Join(ctx droictx.Context, table, fields, join, where, order string, ret int
 		Order(order).
 		Find(ret).Error
 
-	checkDatabaseError(err, &err)
+	checkDatabaseError(pgErr, &err)
 	return
 }
 
-func Execute(ctx droictx.Context, sql string, values ...interface{}) (err error) {
+func Execute(ctx droictx.Context, sql string, values ...interface{}) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
@@ -163,7 +166,7 @@ func Execute(ctx droictx.Context, sql string, values ...interface{}) (err error)
 	return
 }
 
-func Transaction(ctx droictx.Context, sqls []string) (err error) {
+func Transaction(ctx droictx.Context, sqls []string) (err droipkg.DroiError) {
 	p, err := getPg(ctx)
 	if err != nil {
 		return
