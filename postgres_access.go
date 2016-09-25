@@ -184,3 +184,12 @@ func Transaction(ctx droictx.Context, sqls []string) (err droipkg.DroiError) {
 	tx.Commit()
 	return
 }
+
+func RowScan(ctx droictx.Context, sql string, ptrs ...interface{}) (err droipkg.DroiError) {
+	p, err := getPg(ctx)
+	if err != nil {
+		return
+	}
+	checkDatabaseError(p.Conn.Raw(sql).Row().Scan(ptrs...), &err)
+	return
+}
