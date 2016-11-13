@@ -1,183 +1,49 @@
 package postgres
 
 import (
-	"fmt"
-	"github.com/DroiTaipei/droictx"
 	"github.com/DroiTaipei/droipkg"
-	"github.com/devopstaku/gorm"
-	_ "github.com/lib/pq"
-	"time"
+)
+
+var (
+	stdPool *SessionPool
 )
 
 const (
 	DB_TYPE_POSTGRES = "pg"
-	ONE_NODE_MODE    = "ONE"
+	SINGLE_MODE      = "SINGLE"
 	ROUND_ROBIN_MODE = "ROUNDROBIN"
 )
 
-type DBInfo struct {
-	MaxConn  int
-	MaxIdle  int
-	Name     string
-	Host     string
-	Port     int
-	Database string
-	User     string
-	Password string
-	// Health Checking Time Interval
-	HCInterval time.Duration
-}
-
-var pgMode string
-
-var oneP *Pg
-var rP *ringPg
-
-type Pg struct {
-	Conn *gorm.DB
-	Type string
-	DBInfo
-	workable bool
-	timer    *time.Timer
-}
-
 func Initialize(infos []*DBInfo, accessTarget string) error {
-	rP = &ringPg{}
+	stdPool = &SessionPool{}
 	b := len(infos)
 	if b == 0 {
 		return droipkg.Wrap(InitializeFailed, "Empty PG DB Infos")
 	}
-	for i := 0; i < b; i++ {
-		rP.AddEndPoint(newPg(infos[i]))
-	}
-	rP.CheckValidList()
 	if accessTarget == ROUND_ROBIN_MODE {
-		pgMode = ROUND_ROBIN_MODE
+		stdPool.RoundRobinMode(infos)
+		return nil
 	} else {
-		ps := rP.AllEndPoints()
-		b = len(ps)
 		for i := 0; i < b; i++ {
-			if ps[i].DBInfo.Name == accessTarget {
-				oneP = ps[i]
+			if infos[i].Name == accessTarget {
+				stdPool.SingelMode(infos[i])
+				return nil
 			}
 		}
 
-		if oneP == nil {
-			return droipkg.Wrap(InitializeFailed, "Invalid Config")
-		}
-		pgMode = ONE_NODE_MODE
+		return droipkg.Wrap(InitializeFailed, "Invalid Single Mode Config")
 	}
 	return nil
 
 }
 
 func Close() {
-	if rP != nil {
-		ps := rP.AllEndPoints()
-		b := len(ps)
+	if stdPool != nil {
+		ss := stdPool.AllEndPoints()
+		b := len(ss)
 		for i := 0; i < b; i++ {
-			ps[i].Close()
+			ss[i].Close()
 		}
 	}
 
-}
-
-func newPg(dbi *DBInfo) *Pg {
-	r := &Pg{DBInfo: *dbi, Type: DB_TYPE_POSTGRES}
-	r.connect()
-	return r
-}
-
-func (p *Pg) getConnection(host string, port int, user, password, database string, maxIdle, maxConn int) (c *gorm.DB, err error) {
-
-	conninfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, database)
-	maxAttempts := 20
-	for attempts := 1; attempts <= maxAttempts; attempts++ {
-		c, err = gorm.Open("postgres", conninfo)
-		if err == nil {
-			break
-		}
-		fmt.Printf("Round %d, Attemp to Connect with %s Failed, with %s\n", attempts, conninfo, err.Error())
-		time.Sleep(time.Duration(attempts) * time.Second)
-	}
-	if err != nil {
-		return
-	}
-
-	c.DB().SetMaxIdleConns(maxIdle)
-	c.DB().SetMaxOpenConns(maxConn)
-	c.Exec("SET TIME ZONE 'UTC';")
-	return
-}
-
-func (p *Pg) connect() bool {
-	var err error
-	p.Conn, err = p.getConnection(p.DBInfo.Host, p.DBInfo.Port, p.DBInfo.User, p.DBInfo.Password, p.DBInfo.Database, p.DBInfo.MaxIdle, p.DBInfo.MaxConn)
-	if err != nil {
-		return false
-	}
-	p.checkWorkable()
-	return p.workable
-}
-
-func (p *Pg) Close() {
-	p.Conn.Close()
-}
-
-func (p *Pg) setCtx(ctx droictx.Context) {
-	ctx.Set(DB_TYPE_FIELD, p.Type)
-	ctx.Set(DB_HOSTNAME_FIELD, p.Name)
-}
-
-func (p *Pg) unWorkable() {
-	p.workable = false
-	rP.CheckValidList()
-	go p.check()
-}
-
-func (p *Pg) check() {
-	// Avoid Repeated Call v.check
-	// While timer is not nil, it means there is another goroutine
-	if p.timer != nil {
-		return
-	}
-
-	p.timer = time.NewTimer(p.DBInfo.HCInterval)
-	for p.timer != nil {
-		select {
-		case <-p.timer.C:
-			debug(" Checking is ", p.Name, " Workable? ")
-			if p.connect() {
-				p.timer = nil
-				debug(p.Name, " is Workable!")
-				return
-			} else {
-				p.timer = time.NewTimer(p.DBInfo.HCInterval)
-			}
-		}
-	}
-
-}
-
-func (p *Pg) enWorkable() {
-	p.workable = true
-	rP.CheckValidList()
-}
-
-func (p *Pg) Workable() bool {
-	return p.workable
-}
-
-func (p *Pg) testConnection() (ret bool) {
-	err := p.Conn.DB().Ping()
-	if err == nil {
-		ret = true
-	}
-	return
-}
-func (p *Pg) checkWorkable() {
-	if p.testConnection() {
-		p.enWorkable()
-	}
 }

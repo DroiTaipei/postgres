@@ -110,7 +110,7 @@ func init() {
 	}
 }
 
-func (p *Pg) CheckDatabaseError(err error, errPtr *droipkg.DroiError) {
+func (s *Session) CheckDatabaseError(err error, errPtr *droipkg.DroiError) {
 	// TODO: More detail error handling
 	if err != nil {
 		*errPtr = DatabaseErr
@@ -130,7 +130,7 @@ func (p *Pg) CheckDatabaseError(err error, errPtr *droipkg.DroiError) {
 				}
 			case net.Error:
 				*errPtr = DatabaseUnavailable
-				p.unWorkable()
+				s.unWorkable()
 			}
 		}
 		droipkg.Wrap(*errPtr, err.Error())
