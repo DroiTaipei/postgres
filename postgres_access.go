@@ -1,10 +1,10 @@
 package postgres
 
 import (
-	"time"
-
+	"database/sql"
 	"github.com/DroiTaipei/droictx"
 	"github.com/DroiTaipei/droipkg"
+	"time"
 )
 
 func getPg(ctx droictx.Context) (ret *Pg, droiError droipkg.DroiError) {
@@ -20,7 +20,7 @@ func getPg(ctx droictx.Context) (ret *Pg, droiError droipkg.DroiError) {
 	ret, err := rP.RREndPoint()
 	if err != nil {
 		ret.setCtx(ctx)
-		checkDatabaseError(err, &droiError)
+		ret.CheckDatabaseError(err, &droiError)
 	}
 	return
 }
@@ -31,7 +31,7 @@ func OneRecord(ctx droictx.Context, whereClause string, ret interface{}) (err dr
 		return
 	}
 	defer sqlLog(ctx, p.DBInfo.Name, whereClause, time.Now())
-	checkDatabaseError(p.Conn.First(ret, whereClause).Error, &err)
+	p.CheckDatabaseError(p.Conn.First(ret, whereClause).Error, &err)
 	return
 }
 
@@ -51,7 +51,7 @@ func Query(ctx droictx.Context, where, order string, limit, offset int, ret inte
 	q = q.Offset(offset).Limit(limit)
 	defer sqlLog(ctx, p.DBInfo.Name, q.GetSql(&ret), time.Now())
 
-	checkDatabaseError(q.Find(ret).Error, &err)
+	p.CheckDatabaseError(q.Find(ret).Error, &err)
 	return
 }
 
@@ -71,7 +71,7 @@ func TableQuery(ctx droictx.Context, table, where, order string, limit, offset i
 	q = q.Offset(offset).Limit(limit)
 	defer sqlLog(ctx, p.DBInfo.Name, q.GetSql(&ret), time.Now())
 
-	checkDatabaseError(q.Find(ret).Error, &err)
+	p.CheckDatabaseError(q.Find(ret).Error, &err)
 	return
 }
 
@@ -82,7 +82,7 @@ func SQLQuery(ctx droictx.Context, querySql string, ret interface{}) (err droipk
 	}
 	defer sqlLog(ctx, p.DBInfo.Name, querySql, time.Now())
 
-	checkDatabaseError(p.Conn.Raw(querySql).Scan(ret).Error, &err)
+	p.CheckDatabaseError(p.Conn.Raw(querySql).Scan(ret).Error, &err)
 
 	return
 }
@@ -99,7 +99,7 @@ func Count(ctx droictx.Context, where string, model interface{}, ret *int) (err 
 	}
 	defer sqlLog(ctx, p.DBInfo.Name, where, time.Now())
 
-	checkDatabaseError(q.Model(model).Count(ret).Error, &err)
+	p.CheckDatabaseError(q.Model(model).Count(ret).Error, &err)
 	return
 }
 
@@ -108,7 +108,7 @@ func Insert(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
 	if err != nil {
 		return
 	}
-	checkDatabaseError(p.Conn.Create(ret).Error, &err)
+	p.CheckDatabaseError(p.Conn.Create(ret).Error, &err)
 	return
 }
 
@@ -117,7 +117,7 @@ func OmitInsert(ctx droictx.Context, ret interface{}, omit string) (err droipkg.
 	if err != nil {
 		return
 	}
-	checkDatabaseError(p.Conn.Omit(omit).Create(ret).Error, &err)
+	p.CheckDatabaseError(p.Conn.Omit(omit).Create(ret).Error, &err)
 	return
 }
 
@@ -127,7 +127,7 @@ func Update(ctx droictx.Context, ret interface{}, fields map[string]interface{})
 		return
 	}
 
-	checkDatabaseError(p.Conn.Model(ret).UpdateColumns(fields).Error, &err)
+	p.CheckDatabaseError(p.Conn.Model(ret).UpdateColumns(fields).Error, &err)
 	return
 }
 
@@ -136,7 +136,7 @@ func Delete(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
 	if err != nil {
 		return
 	}
-	checkDatabaseError(p.Conn.Delete(ret).Error, &err)
+	p.CheckDatabaseError(p.Conn.Delete(ret).Error, &err)
 	return
 }
 
@@ -153,7 +153,7 @@ func Join(ctx droictx.Context, table, fields, join, where, order string, ret int
 		Order(order).
 		Find(ret).Error
 
-	checkDatabaseError(pgErr, &err)
+	p.CheckDatabaseError(pgErr, &err)
 	return
 }
 
@@ -162,7 +162,7 @@ func Execute(ctx droictx.Context, sql string, values ...interface{}) (err droipk
 	if err != nil {
 		return
 	}
-	checkDatabaseError(p.Conn.Exec(sql, values...).Error, &err)
+	p.CheckDatabaseError(p.Conn.Exec(sql, values...).Error, &err)
 	return
 }
 
@@ -177,7 +177,7 @@ func Transaction(ctx droictx.Context, sqls []string) (err droipkg.DroiError) {
 		rawErr := tx.Exec(sqls[i]).Error
 		if rawErr != nil {
 			tx.Rollback()
-			checkDatabaseError(rawErr, &err)
+			p.CheckDatabaseError(rawErr, &err)
 			return
 		}
 	}
@@ -190,6 +190,16 @@ func RowScan(ctx droictx.Context, sql string, ptrs ...interface{}) (err droipkg.
 	if err != nil {
 		return
 	}
-	checkDatabaseError(p.Conn.Raw(sql).Row().Scan(ptrs...), &err)
+	p.CheckDatabaseError(p.Conn.Raw(sql).Row().Scan(ptrs...), &err)
+	return
+}
+
+func Rows(ctx droictx.Context, sql string) (rows *sql.Rows, err droipkg.DroiError) {
+	p, err := getPg(ctx)
+	if err != nil {
+		return
+	}
+	rows, rawErr := p.Conn.Raw(sql).Rows()
+	p.CheckDatabaseError(rawErr, &err)
 	return
 }

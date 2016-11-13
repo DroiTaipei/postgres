@@ -88,33 +88,35 @@ func newPg(dbi *DBInfo) *Pg {
 	return r
 }
 
-func (p *Pg) getConnection(host string, port int, user, password, database string, maxIdle, maxConn int) *gorm.DB {
-	var dbError error
-	var c *gorm.DB
+func (p *Pg) getConnection(host string, port int, user, password, database string, maxIdle, maxConn int) (c *gorm.DB, err error) {
+
 	conninfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, database)
 	maxAttempts := 20
 	for attempts := 1; attempts <= maxAttempts; attempts++ {
-		c, dbError = gorm.Open("postgres", conninfo)
-		if dbError == nil {
+		c, err = gorm.Open("postgres", conninfo)
+		if err == nil {
 			break
 		}
-		fmt.Println(dbError)
+		fmt.Printf("Round %d, Attemp to Connect with %s Failed, with %s\n", attempts, conninfo, err.Error())
 		time.Sleep(time.Duration(attempts) * time.Second)
 	}
-	if dbError != nil {
-		panic(dbError)
+	if err != nil {
+		return
 	}
 
 	c.DB().SetMaxIdleConns(maxIdle)
 	c.DB().SetMaxOpenConns(maxConn)
 	c.Exec("SET TIME ZONE 'UTC';")
-	return c
+	return
 }
 
 func (p *Pg) connect() bool {
-
-	p.Conn = p.getConnection(p.DBInfo.Host, p.DBInfo.Port, p.DBInfo.User, p.DBInfo.Password, p.DBInfo.Database, p.DBInfo.MaxIdle, p.DBInfo.MaxConn)
+	var err error
+	p.Conn, err = p.getConnection(p.DBInfo.Host, p.DBInfo.Port, p.DBInfo.User, p.DBInfo.Password, p.DBInfo.Database, p.DBInfo.MaxIdle, p.DBInfo.MaxConn)
+	if err != nil {
+		return false
+	}
 	p.checkWorkable()
 	return p.workable
 }

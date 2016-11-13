@@ -4,6 +4,7 @@ import (
 	"github.com/DroiTaipei/droipkg"
 	"github.com/devopstaku/gorm"
 	"github.com/lib/pq"
+	"net"
 )
 
 type RdbApiError struct {
@@ -109,25 +110,27 @@ func init() {
 	}
 }
 
-func checkDatabaseError(err error, errPtr *droipkg.DroiError) {
+func (p *Pg) CheckDatabaseError(err error, errPtr *droipkg.DroiError) {
 	// TODO: More detail error handling
 	if err != nil {
-
+		*errPtr = DatabaseErr
 		switch err {
 		case gorm.ErrRecordNotFound:
 			*errPtr = DataNotFound
 		case gorm.ErrInvalidSQL:
 			*errPtr = ProcessFailed
 		default:
-			*errPtr = DatabaseErr
-
-			if pe, ok := err.(*pq.Error); ok {
-				aErr, handled := errorCodeMap[pe.Code]
+			switch e := err.(type) {
+			case *pq.Error:
+				aErr, handled := errorCodeMap[e.Code]
 				if handled {
 					*errPtr = aErr
 				} else {
-					debug("Unhandle:", pe.Code)
+					debug("Unhandle:", e.Code)
 				}
+			case net.Error:
+				*errPtr = DatabaseUnavailable
+				p.unWorkable()
 			}
 		}
 		droipkg.Wrap(*errPtr, err.Error())
