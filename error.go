@@ -107,6 +107,8 @@ func init() {
 		"42P01": ResourceNotFound,
 		"42P07": DuplicatedTable,
 		"23505": PrimaryKeyDuplicated,
+		"42601": ProcessFailed,
+		"42703": ResourceNotFound,
 	}
 }
 
