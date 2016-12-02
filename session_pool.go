@@ -33,6 +33,44 @@ func (sp *SessionPool) RoundRobinMode(infos []*DBInfo) {
 	sp.mode = ROUND_ROBIN_MODE
 }
 
+func (sp *SessionPool) Initialize(infos []*DBInfo, accessTarget string) error {
+	b := len(infos)
+	if b == 0 {
+		return droipkg.Wrap(InitializeFailed, "Empty PG DB Infos")
+	}
+	if accessTarget == ROUND_ROBIN_MODE {
+		sp.RoundRobinMode(infos)
+		return nil
+	} else {
+		for i := 0; i < b; i++ {
+			if infos[i].Name == accessTarget {
+				sp.SingelMode(infos[i])
+				return nil
+			}
+		}
+
+		return droipkg.Wrap(InitializeFailed, "Invalid Single Mode Config")
+	}
+	return nil
+
+}
+
+func (sp *SessionPool) Close() {
+	switch sp.mode {
+	case SINGLE_MODE:
+		if sp.single != nil {
+			sp.single.Close()
+		}
+	case ROUND_ROBIN_MODE:
+		ss := sp.AllEndPoints()
+		b := len(ss)
+		for i := 0; i < b; i++ {
+			ss[i].Close()
+		}
+	}
+
+}
+
 func (sp *SessionPool) AllEndPoints() []*Session {
 	return sp.validEpList
 }
