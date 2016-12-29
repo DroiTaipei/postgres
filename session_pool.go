@@ -19,7 +19,7 @@ type SessionPool struct {
 	single      *Session
 }
 
-func (sp *SessionPool) SingelMode(info *DBInfo) {
+func (sp *SessionPool) SingleMode(info *DBInfo) {
 	sp.single = newSession(info)
 	sp.mode = SINGLE_MODE
 }
@@ -44,7 +44,7 @@ func (sp *SessionPool) Initialize(infos []*DBInfo, accessTarget string) error {
 	} else {
 		for i := 0; i < b; i++ {
 			if infos[i].Name == accessTarget {
-				sp.SingelMode(infos[i])
+				sp.SingleMode(infos[i])
 				return nil
 			}
 		}
