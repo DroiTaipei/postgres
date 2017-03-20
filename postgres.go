@@ -15,6 +15,18 @@ func Initialize(infos []*DBInfo, accessTarget string) error {
 	return stdPool.Initialize(infos, accessTarget)
 }
 
+func ConnectOne(info *DBInfo) error {
+	stdPool = &SessionPool{}
+	stdPool.SingleMode(info)
+	return nil
+}
+
+func RoundRobin(infos []*DBInfo) error {
+	stdPool = &SessionPool{}
+	stdPool.RoundRobinMode(infos)
+	return nil
+}
+
 func Close() {
 	if stdPool != nil {
 		stdPool.Close()
