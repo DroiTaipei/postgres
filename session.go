@@ -79,6 +79,13 @@ func (s *Session) Close() {
 	s.Conn.Close()
 }
 
+func (s *Session) reconnect() bool {
+	tmp := s.Conn
+	defer tmp.Close()
+	s.workable = false
+	return s.connect()
+}
+
 func (s *Session) setCtx(ctx droictx.Context) {
 	ctx.Set(DB_TYPE_FIELD, s.Type)
 	ctx.Set(DB_HOSTNAME_FIELD, s.Name)

@@ -68,6 +68,22 @@ func (sp *SessionPool) Close() {
 			ss[i].Close()
 		}
 	}
+}
+
+func (sp *SessionPool) Reconnect() {
+	switch sp.mode {
+	case SINGLE_MODE:
+		if sp.single != nil {
+			sp.single.reconnect()
+		}
+	// Wait to verified
+	case ROUND_ROBIN_MODE:
+		ss := sp.AllEndPoints()
+		b := len(ss)
+		for i := 0; i < b; i++ {
+			ss[i].reconnect()
+		}
+	}
 
 }
 

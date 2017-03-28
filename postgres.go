@@ -1,5 +1,7 @@
 package postgres
 
+import "github.com/DroiTaipei/droipkg"
+
 var (
 	stdPool *SessionPool
 )
@@ -24,6 +26,14 @@ func ConnectOne(info *DBInfo) error {
 func RoundRobin(infos []*DBInfo) error {
 	stdPool = &SessionPool{}
 	stdPool.RoundRobinMode(infos)
+	return nil
+}
+
+func Reconnect() error {
+	if stdPool == nil {
+		return droipkg.NewError("There is no alived for reconnecting")
+	}
+	stdPool.Reconnect()
 	return nil
 }
 
