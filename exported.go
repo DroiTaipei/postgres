@@ -23,6 +23,10 @@ func SQLQuery(ctx droictx.Context, querySql string, ret interface{}) (err droipk
 	return stdPool.SQLQuery(ctx, querySql, ret)
 }
 
+func WhereQuery(ctx droictx.Context, where interface{}, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+	return stdPool.WhereQuery(ctx, where, order, limit, offset, ret)
+}
+
 func Count(ctx droictx.Context, where string, model interface{}, ret *int) (err droipkg.DroiError) {
 	return stdPool.Count(ctx, where, model, ret)
 }
@@ -37,6 +41,10 @@ func OmitInsert(ctx droictx.Context, ret interface{}, omit string) (err droipkg.
 
 func Update(ctx droictx.Context, ret interface{}, fields map[string]interface{}) (err droipkg.DroiError) {
 	return stdPool.Update(ctx, ret, fields)
+}
+
+func UpdateNonBlank(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
+	return stdPool.UpdateNonBlank(ctx, ret)
 }
 
 func Delete(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {

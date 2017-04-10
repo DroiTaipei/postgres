@@ -178,6 +178,14 @@ func (sp *SessionPool) SQLQuery(ctx droictx.Context, querySql string, ret interf
 	return s.SQLQuery(ctx, querySql, ret)
 }
 
+func (sp *SessionPool) WhereQuery(ctx droictx.Context, where interface{}, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+	s, err := sp.getSession(ctx)
+	if err != nil {
+		return
+	}
+	return s.WhereQuery(ctx, where, order, limit, offset, ret)
+}
+
 func (sp *SessionPool) Count(ctx droictx.Context, where string, model interface{}, ret *int) (err droipkg.DroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
@@ -208,6 +216,14 @@ func (sp *SessionPool) Update(ctx droictx.Context, ret interface{}, fields map[s
 		return
 	}
 	return s.Update(ctx, ret, fields)
+}
+
+func (sp *SessionPool) UpdateNonBlank(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
+	s, err := sp.getSession(ctx)
+	if err != nil {
+		return
+	}
+	return s.UpdateNonBlank(ctx, ret)
 }
 
 func (sp *SessionPool) Delete(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {

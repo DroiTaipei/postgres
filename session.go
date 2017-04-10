@@ -191,6 +191,15 @@ func (s *Session) SQLQuery(ctx droictx.Context, querySql string, ret interface{}
 	return
 }
 
+func (s *Session) WhereQuery(ctx droictx.Context, where interface{}, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+	tmp := s.Conn.Where(where)
+	if len(order) > 0 {
+		tmp = tmp.Order(order)
+	}
+	s.CheckDatabaseError(tmp.Limit(limit).Offset(offset).Find(ret).Error, &err)
+	return
+}
+
 func (s *Session) Count(ctx droictx.Context, where string, model interface{}, ret *int) (err droipkg.DroiError) {
 	q := s.Conn
 	if len(where) > 0 {
@@ -213,6 +222,11 @@ func (s *Session) OmitInsert(ctx droictx.Context, ret interface{}, omit string) 
 
 func (s *Session) Update(ctx droictx.Context, ret interface{}, fields map[string]interface{}) (err droipkg.DroiError) {
 	s.CheckDatabaseError(s.Conn.Model(ret).UpdateColumns(fields).Error, &err)
+	return
+}
+
+func (s *Session) UpdateNonBlank(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
+	s.CheckDatabaseError(s.Conn.Model(ret).Update(ret).Error, &err)
 	return
 }
 
