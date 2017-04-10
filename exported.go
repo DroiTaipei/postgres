@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/DroiTaipei/droictx"
 	"github.com/DroiTaipei/droipkg"
+	"github.com/devopstaku/gorm"
 )
 
 func OneRecord(ctx droictx.Context, whereClause string, ret interface{}) (err droipkg.DroiError) {
@@ -60,4 +61,8 @@ func RowScan(ctx droictx.Context, sql string, ptrs ...interface{}) (err droipkg.
 
 func Rows(ctx droictx.Context, sql string) (rows *sql.Rows, err droipkg.DroiError) {
 	return stdPool.Rows(ctx, sql)
+}
+
+func GetGORM(ctx droictx.Context) (ret *gorm.DB, err droipkg.DroiError) {
+	return stdPool.GetGORM(ctx)
 }

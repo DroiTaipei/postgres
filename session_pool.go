@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/DroiTaipei/droictx"
 	"github.com/DroiTaipei/droipkg"
+	"github.com/devopstaku/gorm"
 	"sync"
 	"sync/atomic"
 )
@@ -255,4 +256,13 @@ func (sp *SessionPool) Rows(ctx droictx.Context, sql string) (rows *sql.Rows, er
 		return
 	}
 	return s.Rows(ctx, sql)
+}
+
+func (sp *SessionPool) GetGORM(ctx droictx.Context) (ret *gorm.DB, err droipkg.DroiError) {
+	s, err := sp.getSession(ctx)
+	if err != nil {
+		return
+	}
+	ret = s.Conn.New()
+	return
 }
