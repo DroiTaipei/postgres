@@ -74,3 +74,7 @@ func Rows(ctx droictx.Context, sql string) (rows *sql.Rows, err droipkg.DroiErro
 func GetGORM(ctx droictx.Context) (ret *gorm.DB, err droipkg.DroiError) {
 	return stdPool.GetGORM(ctx)
 }
+
+func LogMode(ctx droictx.Context, enable bool) (err droipkg.DroiError) {
+	return stdPool.LogMode(ctx, enable)
+}

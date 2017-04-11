@@ -282,3 +282,15 @@ func (sp *SessionPool) GetGORM(ctx droictx.Context) (ret *gorm.DB, err droipkg.D
 	ret = s.Conn.New()
 	return
 }
+
+//LogMode : For enabling log
+func (sp *SessionPool) LogMode(ctx droictx.Context, enable bool) (err droipkg.DroiError) {
+	// FIXME
+	// It should be for all session
+	s, err := sp.getSession(ctx)
+	if err != nil {
+		return
+	}
+	s.Conn.LogMode(enable)
+	return
+}
