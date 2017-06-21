@@ -1,10 +1,11 @@
 package postgres
 
 import (
+	"net"
+
 	"github.com/DroiTaipei/droipkg"
 	"github.com/devopstaku/gorm"
 	"github.com/lib/pq"
-	"net"
 )
 
 type RdbApiError struct {
@@ -21,8 +22,8 @@ func (ae *RdbApiError) SetErrorCode(code int) {
 func (ae *RdbApiError) Error() string {
 	return ae.Err.Error()
 }
-func (ae *RdbApiError) Wrap(msg string) {
-	ae.Err = droipkg.Wrap(ae.Err, msg)
+func (ae *RdbApiError) Wrap(msg string) error {
+	return droipkg.Wrap(ae, msg)
 }
 
 const (
