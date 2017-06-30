@@ -19,9 +19,14 @@ const (
 	DB_COMMAND_TIME_FIELD    = "Dct"
 	REQUEST_TIME_FIELD       = "Rt"
 	TOPIC_KEY                = "TOPIC"
-	PG_TOPIC                 = "pg_api_access"
 	LOG_VERSION              = "1"
 )
+
+var TOPIC_NAME = "pg_api_access"
+
+func SetLogTopic(acc string) {
+	TOPIC_NAME = acc
+}
 
 func SpentTime(t time.Time) int64 {
 	d := time.Since(t)
@@ -37,7 +42,7 @@ func sqlLog(ctx droictx.Context, dbName, sql string, start time.Time) {
 		WithField(DB_HOSTNAME_FIELD, dbName).
 		WithField(DB_COMMAND_TIME_FIELD, SpentTime(start)).
 		WithField(ACCESS_LOG_VERSION_FIELD, LOG_VERSION).
-		WithField(TOPIC_KEY, PG_TOPIC).
+		WithField(TOPIC_KEY, TOPIC_NAME).
 		Error("NOERR")
 }
 
