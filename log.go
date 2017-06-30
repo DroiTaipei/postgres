@@ -18,6 +18,9 @@ const (
 	DB_COMMAND_FIELD         = "Dc"
 	DB_COMMAND_TIME_FIELD    = "Dct"
 	REQUEST_TIME_FIELD       = "Rt"
+	TOPIC_KEY                = "TOPIC"
+	PG_TOPIC                 = "pg_api_access"
+	LOG_VERSION              = "1"
 )
 
 func SpentTime(t time.Time) int64 {
@@ -29,11 +32,12 @@ func SpentTime(t time.Time) int64 {
 }
 
 func sqlLog(ctx droictx.Context, dbName, sql string, start time.Time) {
-
 	droipkg.GetLogger().WithMap(ctx.Map()).
 		WithField(DB_COMMAND_FIELD, sql).
 		WithField(DB_HOSTNAME_FIELD, dbName).
 		WithField(DB_COMMAND_TIME_FIELD, SpentTime(start)).
+		WithField(ACCESS_LOG_VERSION_FIELD, LOG_VERSION).
+		WithField(TOPIC_KEY, PG_TOPIC).
 		Error("NOERR")
 }
 
