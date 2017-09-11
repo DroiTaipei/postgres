@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/DroiTaipei/droictx"
-	"github.com/DroiTaipei/droipkg"
+	de "github.com/DroiTaipei/droipkg"
 	"github.com/devopstaku/gorm"
 	_ "github.com/lib/pq"
 	"time"
@@ -149,13 +149,13 @@ func (s *Session) checkWorkable() {
 	}
 }
 
-func (s *Session) OneRecord(ctx droictx.Context, whereClause string, ret interface{}) (err droipkg.DroiError) {
+func (s *Session) OneRecord(ctx droictx.Context, ret interface{}, whereClause string, args ...interface{}) (de.AsDroiError) {
+	where := append([]interface{}{whereClause}, args...)
 	defer sqlLog(ctx, s.DBInfo.Name, whereClause, time.Now())
-	s.CheckDatabaseError(s.Conn.First(ret, whereClause).Error, &err)
-	return
+	return s.CheckDatabaseError(s.Conn.First(ret, where...).Error)
 }
 
-func (s *Session) Query(ctx droictx.Context, where, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+func (s *Session) Query(ctx droictx.Context, where, order string, limit, offset int, ret interface{}) (de.AsDroiError) {
 	q := s.Conn
 	if len(where) > 0 {
 		q = q.Where(where)
@@ -164,13 +164,13 @@ func (s *Session) Query(ctx droictx.Context, where, order string, limit, offset 
 		q = q.Order(order)
 	}
 	q = q.Offset(offset).Limit(limit)
-	defer sqlLog(ctx, s.DBInfo.Name, q.GetSql(&ret), time.Now())
+	// TODO: Try To GetSQL
+	defer sqlLog(ctx, s.DBInfo.Name, "", time.Now())
 
-	s.CheckDatabaseError(q.Find(ret).Error, &err)
-	return
+	return s.CheckDatabaseError(q.Find(ret).Error)
 }
 
-func (s *Session) TableQuery(ctx droictx.Context, table, where, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+func (s *Session) TableQuery(ctx droictx.Context, table, where, order string, limit, offset int, ret interface{}) (de.AsDroiError) {
 	q := s.Conn.Table(table)
 	if len(where) > 0 {
 		q = q.Where(where)
@@ -179,102 +179,104 @@ func (s *Session) TableQuery(ctx droictx.Context, table, where, order string, li
 		q = q.Order(order)
 	}
 	q = q.Offset(offset).Limit(limit)
-	defer sqlLog(ctx, s.DBInfo.Name, q.GetSql(&ret), time.Now())
+	// TODO: Try To GetSQL
+	defer sqlLog(ctx, s.DBInfo.Name, "", time.Now())
 
-	s.CheckDatabaseError(q.Find(ret).Error, &err)
-	return
+	return s.CheckDatabaseError(q.Find(ret).Error)
+	
 }
 
-func (s *Session) SQLQuery(ctx droictx.Context, querySql string, ret interface{}) (err droipkg.DroiError) {
+func (s *Session) SQLQuery(ctx droictx.Context, ret interface{}, querySql string, args ...interface{}) (de.AsDroiError) {
 	defer sqlLog(ctx, s.DBInfo.Name, querySql, time.Now())
-	s.CheckDatabaseError(s.Conn.Raw(querySql).Scan(ret).Error, &err)
-	return
+	return s.CheckDatabaseError(s.Conn.Raw(querySql, args ...).Scan(ret).Error)
 }
 
-func (s *Session) WhereQuery(ctx droictx.Context, where interface{}, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+func (s *Session) WhereQuery(ctx droictx.Context, where interface{}, order string, limit, offset int, ret interface{}) (de.AsDroiError) {
 	tmp := s.Conn.Where(where)
 	if len(order) > 0 {
 		tmp = tmp.Order(order)
 	}
-	s.CheckDatabaseError(tmp.Limit(limit).Offset(offset).Find(ret).Error, &err)
-	return
+	return s.CheckDatabaseError(tmp.Limit(limit).Offset(offset).Find(ret).Error)
+	
 }
 
-func (s *Session) Count(ctx droictx.Context, where string, model interface{}, ret *int) (err droipkg.DroiError) {
+func (s *Session) Count(ctx droictx.Context, where string, model interface{}, ret *int) (de.AsDroiError) {
 	q := s.Conn
 	if len(where) > 0 {
 		q = q.Where(where)
 	}
 	defer sqlLog(ctx, s.DBInfo.Name, where, time.Now())
-	s.CheckDatabaseError(q.Model(model).Count(ret).Error, &err)
-	return
+	return s.CheckDatabaseError(q.Model(model).Count(ret).Error)
+	
 }
 
-func (s *Session) Insert(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
-	s.CheckDatabaseError(s.Conn.Create(ret).Error, &err)
-	return
+func (s *Session) Insert(ctx droictx.Context, ret interface{}) (de.AsDroiError) {
+	return s.CheckDatabaseError(s.Conn.Create(ret).Error)
 }
 
-func (s *Session) OmitInsert(ctx droictx.Context, ret interface{}, omit string) (err droipkg.DroiError) {
-	s.CheckDatabaseError(s.Conn.Omit(omit).Create(ret).Error, &err)
-	return
+func (s *Session) OmitInsert(ctx droictx.Context, ret interface{}, omit string) (de.AsDroiError) {
+	return s.CheckDatabaseError(s.Conn.Omit(omit).Create(ret).Error)
 }
 
-func (s *Session) Update(ctx droictx.Context, ret interface{}, fields map[string]interface{}) (err droipkg.DroiError) {
-	s.CheckDatabaseError(s.Conn.Model(ret).UpdateColumns(fields).Error, &err)
-	return
+func (s *Session) Update(ctx droictx.Context, ret interface{}, fields map[string]interface{}) (de.AsDroiError) {
+	return s.CheckDatabaseError(s.Conn.Model(ret).UpdateColumns(fields).Error)
 }
 
-func (s *Session) UpdateNonBlank(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
-	s.CheckDatabaseError(s.Conn.Model(ret).Update(ret).Error, &err)
-	return
+func (s *Session) UpdateNonBlank(ctx droictx.Context, ret interface{}) (de.AsDroiError) {
+	 return s.CheckDatabaseError(s.Conn.Model(ret).Update(ret).Error)
 }
 
-func (s *Session) Delete(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
-	s.CheckDatabaseError(s.Conn.Delete(ret).Error, &err)
-	return
+func (s *Session) CriteriaUpdate(ctx droictx.Context, ret interface{}, fields map[string]interface{}, criteria string, args ...interface{}) de.AsDroiError {
+	return s.CheckDatabaseError(s.Conn.Model(ret).Where(criteria, args...).UpdateColumns(fields).Error)
 }
 
-func (s *Session) Join(ctx droictx.Context, table, fields, join, where, order string, ret interface{}) (err droipkg.DroiError) {
+func (s *Session) Delete(ctx droictx.Context, ret interface{}) (de.AsDroiError) {
+	return s.CheckDatabaseError(s.Conn.Delete(ret).Error)
+}
+
+func (s *Session) CriteriaDelete(ctx droictx.Context, ret interface{}, criteria string, args ...interface{}) de.AsDroiError  {
+	return s.CheckDatabaseError(s.Conn.Where(criteria, args...).Delete(ret).Error)
+}
+
+func (s *Session) Join(ctx droictx.Context, ret interface{}, table, fields, join, order, criteria string, args ...interface{}) (de.AsDroiError) {
 	pgErr := s.Conn.
 		Table(table).
 		Select(fields).
 		Joins(join).
-		Where(where).
+		Where(criteria, args...).
 		Order(order).
 		Find(ret).Error
 
-	s.CheckDatabaseError(pgErr, &err)
-	return
+	return s.CheckDatabaseError(pgErr)
+	
 }
 
-func (s *Session) Execute(ctx droictx.Context, sql string, values ...interface{}) (err droipkg.DroiError) {
-	s.CheckDatabaseError(s.Conn.Exec(sql, values...).Error, &err)
-	return
+func (s *Session) Execute(ctx droictx.Context, sql string, values ...interface{}) (de.AsDroiError) {
+	return s.CheckDatabaseError(s.Conn.Exec(sql, values...).Error)
+	
 }
 
-func (s *Session) Transaction(ctx droictx.Context, sqls []string) (err droipkg.DroiError) {
+func (s *Session) Transaction(ctx droictx.Context, sqls []string) (de.AsDroiError) {
 	tx := s.Conn.Begin()
 	b := len(sqls)
 	for i := 0; i < b; i++ {
 		rawErr := tx.Exec(sqls[i]).Error
 		if rawErr != nil {
 			tx.Rollback()
-			s.CheckDatabaseError(rawErr, &err)
-			return
+			return s.CheckDatabaseError(rawErr)
+			
 		}
 	}
 	tx.Commit()
-	return
+	return nil
 }
 
-func (s *Session) RowScan(ctx droictx.Context, sql string, ptrs ...interface{}) (err droipkg.DroiError) {
-	s.CheckDatabaseError(s.Conn.Raw(sql).Row().Scan(ptrs...), &err)
-	return
+func (s *Session) RowScan(ctx droictx.Context, sql string, ptrs ...interface{}) (de.AsDroiError) {
+	return s.CheckDatabaseError(s.Conn.Raw(sql).Row().Scan(ptrs...))
+	
 }
 
-func (s *Session) Rows(ctx droictx.Context, sql string) (rows *sql.Rows, err droipkg.DroiError) {
+func (s *Session) Rows(ctx droictx.Context, sql string) (rows *sql.Rows, err de.AsDroiError) {
 	rows, rawErr := s.Conn.Raw(sql).Rows()
-	s.CheckDatabaseError(rawErr, &err)
-	return
+	return rows, s.CheckDatabaseError(rawErr)
 }

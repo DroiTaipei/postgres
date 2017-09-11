@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/DroiTaipei/droictx"
-	"github.com/DroiTaipei/droipkg"
+	de "github.com/DroiTaipei/droipkg"
+	"github.com/DroiTaipei/droipkg/rdb"
 	"github.com/devopstaku/gorm"
 	"sync"
 	"sync/atomic"
@@ -37,7 +38,7 @@ func (sp *SessionPool) RoundRobinMode(infos []*DBInfo) {
 func (sp *SessionPool) Initialize(infos []*DBInfo, accessTarget string) error {
 	b := len(infos)
 	if b == 0 {
-		return droipkg.Wrap(InitializeFailed, "Empty PG DB Infos")
+		return de.NewError("Initialize Failed: Empty PG DB Infos")
 	}
 	if accessTarget == ROUND_ROBIN_MODE {
 		sp.RoundRobinMode(infos)
@@ -50,7 +51,7 @@ func (sp *SessionPool) Initialize(infos []*DBInfo, accessTarget string) error {
 			}
 		}
 
-		return droipkg.Wrap(InitializeFailed, "Invalid Single Mode Config")
+		return de.NewError("Initialize Failed: Invalid Single Mode Config")
 	}
 	return nil
 
@@ -111,7 +112,7 @@ func (sp *SessionPool) CheckValidList() {
 	}
 }
 
-func (sp *SessionPool) RREndPoint() (*Session, droipkg.DroiError) {
+func (sp *SessionPool) RREndPoint() (*Session, de.AsDroiError) {
 	sp.mu.RLock()
 	defer sp.mu.RUnlock()
 	l := len(sp.validEpList)
@@ -119,7 +120,7 @@ func (sp *SessionPool) RREndPoint() (*Session, droipkg.DroiError) {
 		fmt.Sprintf("%#v", sp.validEpList[i])
 	}
 	if l == 0 {
-		return nil, DatabaseUnavailable
+		return nil, de.NewTraceWithMsg(rdb.ErrDatabaseUnavailable,"")
 	}
 	if l == 1 {
 		return sp.validEpList[0], nil
@@ -129,13 +130,13 @@ func (sp *SessionPool) RREndPoint() (*Session, droipkg.DroiError) {
 	return sp.validEpList[p%uint64(l)], nil
 }
 
-func (sp *SessionPool) getSession(ctx droictx.Context) (ret *Session, err droipkg.DroiError) {
+func (sp *SessionPool) getSession(ctx droictx.Context) (ret *Session, err de.AsDroiError) {
 	if sp.mode == SINGLE_MODE {
 		if sp.single.Workable() {
 			sp.single.setCtx(ctx)
 			return sp.single, nil
 		} else {
-			return nil, DatabaseUnavailable
+			return nil, de.NewTraceWithMsg(rdb.ErrDatabaseUnavailable,"")
 		}
 
 	}
@@ -146,15 +147,15 @@ func (sp *SessionPool) getSession(ctx droictx.Context) (ret *Session, err droipk
 	return
 }
 
-func (sp *SessionPool) OneRecord(ctx droictx.Context, whereClause string, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) OneRecord(ctx droictx.Context, ret interface{}, whereClause string, args ...interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
 	}
-	return s.OneRecord(ctx, whereClause, ret)
+	return s.OneRecord(ctx, ret, whereClause, args...)
 }
 
-func (sp *SessionPool) Query(ctx droictx.Context, where, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) Query(ctx droictx.Context, where, order string, limit, offset int, ret interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -162,7 +163,7 @@ func (sp *SessionPool) Query(ctx droictx.Context, where, order string, limit, of
 	return s.Query(ctx, where, order, limit, offset, ret)
 }
 
-func (sp *SessionPool) TableQuery(ctx droictx.Context, table, where, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) TableQuery(ctx droictx.Context, table, where, order string, limit, offset int, ret interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -170,15 +171,15 @@ func (sp *SessionPool) TableQuery(ctx droictx.Context, table, where, order strin
 	return s.TableQuery(ctx, table, where, order, limit, offset, ret)
 }
 
-func (sp *SessionPool) SQLQuery(ctx droictx.Context, querySql string, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) SQLQuery(ctx droictx.Context, ret interface{}, querySql string, args ...interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
 	}
-	return s.SQLQuery(ctx, querySql, ret)
+	return s.SQLQuery(ctx, ret, querySql, args...)
 }
 
-func (sp *SessionPool) WhereQuery(ctx droictx.Context, where interface{}, order string, limit, offset int, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) WhereQuery(ctx droictx.Context, where interface{}, order string, limit, offset int, ret interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -186,7 +187,7 @@ func (sp *SessionPool) WhereQuery(ctx droictx.Context, where interface{}, order 
 	return s.WhereQuery(ctx, where, order, limit, offset, ret)
 }
 
-func (sp *SessionPool) Count(ctx droictx.Context, where string, model interface{}, ret *int) (err droipkg.DroiError) {
+func (sp *SessionPool) Count(ctx droictx.Context, where string, model interface{}, ret *int) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -194,7 +195,7 @@ func (sp *SessionPool) Count(ctx droictx.Context, where string, model interface{
 	return s.Count(ctx, where, model, ret)
 }
 
-func (sp *SessionPool) Insert(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) Insert(ctx droictx.Context, ret interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -202,7 +203,7 @@ func (sp *SessionPool) Insert(ctx droictx.Context, ret interface{}) (err droipkg
 	return s.Insert(ctx, ret)
 }
 
-func (sp *SessionPool) OmitInsert(ctx droictx.Context, ret interface{}, omit string) (err droipkg.DroiError) {
+func (sp *SessionPool) OmitInsert(ctx droictx.Context, ret interface{}, omit string) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -210,7 +211,7 @@ func (sp *SessionPool) OmitInsert(ctx droictx.Context, ret interface{}, omit str
 	return s.OmitInsert(ctx, ret, omit)
 }
 
-func (sp *SessionPool) Update(ctx droictx.Context, ret interface{}, fields map[string]interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) Update(ctx droictx.Context, ret interface{}, fields map[string]interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -218,7 +219,7 @@ func (sp *SessionPool) Update(ctx droictx.Context, ret interface{}, fields map[s
 	return s.Update(ctx, ret, fields)
 }
 
-func (sp *SessionPool) UpdateNonBlank(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) UpdateNonBlank(ctx droictx.Context, ret interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -226,7 +227,15 @@ func (sp *SessionPool) UpdateNonBlank(ctx droictx.Context, ret interface{}) (err
 	return s.UpdateNonBlank(ctx, ret)
 }
 
-func (sp *SessionPool) Delete(ctx droictx.Context, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) CriteriaUpdate(ctx droictx.Context, ret interface{}, fields map[string]interface{}, criteria string, args ...interface{}) (err de.AsDroiError)  {
+	s, err := sp.getSession(ctx)
+	if err != nil {
+		return 
+	}
+	return s.CriteriaUpdate(ctx, ret, fields, criteria, args ...)
+}
+
+func (sp *SessionPool) Delete(ctx droictx.Context, ret interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -234,15 +243,23 @@ func (sp *SessionPool) Delete(ctx droictx.Context, ret interface{}) (err droipkg
 	return s.Delete(ctx, ret)
 }
 
-func (sp *SessionPool) Join(ctx droictx.Context, table, fields, join, where, order string, ret interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) CriteriaDelete(ctx droictx.Context, ret interface{}, criteria string, args ...interface{}) (err de.AsDroiError)  {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
 	}
-	return s.Join(ctx, table, fields, join, where, order, ret)
+	return s.CriteriaDelete(ctx, ret, criteria, args ...)
 }
 
-func (sp *SessionPool) Execute(ctx droictx.Context, sql string, values ...interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) Join(ctx droictx.Context, ret interface{}, table, fields, join, order, criteria string, args ...interface{}) (err de.AsDroiError) {
+	s, err := sp.getSession(ctx)
+	if err != nil {
+		return
+	}
+	return s.Join(ctx, ret, table, fields, join, order, criteria, args ...)
+}
+
+func (sp *SessionPool) Execute(ctx droictx.Context, sql string, values ...interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -250,7 +267,7 @@ func (sp *SessionPool) Execute(ctx droictx.Context, sql string, values ...interf
 	return s.Execute(ctx, sql, values...)
 }
 
-func (sp *SessionPool) Transaction(ctx droictx.Context, sqls []string) (err droipkg.DroiError) {
+func (sp *SessionPool) Transaction(ctx droictx.Context, sqls []string) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -258,7 +275,7 @@ func (sp *SessionPool) Transaction(ctx droictx.Context, sqls []string) (err droi
 	return s.Transaction(ctx, sqls)
 }
 
-func (sp *SessionPool) RowScan(ctx droictx.Context, sql string, ptrs ...interface{}) (err droipkg.DroiError) {
+func (sp *SessionPool) RowScan(ctx droictx.Context, sql string, ptrs ...interface{}) (err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -266,7 +283,7 @@ func (sp *SessionPool) RowScan(ctx droictx.Context, sql string, ptrs ...interfac
 	return s.RowScan(ctx, sql, ptrs...)
 }
 
-func (sp *SessionPool) Rows(ctx droictx.Context, sql string) (rows *sql.Rows, err droipkg.DroiError) {
+func (sp *SessionPool) Rows(ctx droictx.Context, sql string) (rows *sql.Rows, err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -274,7 +291,7 @@ func (sp *SessionPool) Rows(ctx droictx.Context, sql string) (rows *sql.Rows, er
 	return s.Rows(ctx, sql)
 }
 
-func (sp *SessionPool) GetGORM(ctx droictx.Context) (ret *gorm.DB, err droipkg.DroiError) {
+func (sp *SessionPool) GetGORM(ctx droictx.Context) (ret *gorm.DB, err de.AsDroiError) {
 	s, err := sp.getSession(ctx)
 	if err != nil {
 		return
@@ -284,7 +301,7 @@ func (sp *SessionPool) GetGORM(ctx droictx.Context) (ret *gorm.DB, err droipkg.D
 }
 
 //LogMode : For enabling log
-func (sp *SessionPool) LogMode(ctx droictx.Context, enable bool) (err droipkg.DroiError) {
+func (sp *SessionPool) LogMode(ctx droictx.Context, enable bool) (err de.AsDroiError) {
 	// FIXME
 	// It should be for all session
 	s, err := sp.getSession(ctx)
